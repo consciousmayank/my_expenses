@@ -1,3 +1,33 @@
-Version Updates:
-1. Expense backup and restore now checks if the token is valid before proceeding.
-2. Expense backup and restore now shows a persistent snackbar if the token is invalid. User can now login again from the snackbar. If he doesn't want to, he can close the snackbar but the backup/restore will not proceed.
+# Release Notes - v1.1.0
+
+## 🔐 Security Enhancements
+- Implemented token expiration monitoring and automatic handling
+- Added secure token validation for Google Drive operations
+- Enhanced authentication flow with better error handling
+
+## 🔄 Recurring Expenses
+- Updated recurring expense model with improved validation
+- Enhanced recurring expense sheet UI and functionality
+- Added better integration with main expense tracking
+
+## 🎨 UI/UX Improvements
+- Centralized all string constants for better maintainability
+- Updated snackbar notifications for better user feedback
+- Improved expense editing interface
+- Enhanced all expenses view with better error states
+
+## 🛠 Technical Improvements
+- Refactored storage service for better performance
+- Updated drive backup service with improved error handling
+- Enhanced test coverage with updated mocks
+- Improved app constants organization
+
+## 🐛 Bug Fixes
+- Fixed token expiration handling edge cases
+- Improved error handling in authentication flow
+- Enhanced data validation in expense forms
+
+## 📝 Developer Notes
+- All string constants are now centralized in app_strings.dart
+- Added token stream for better auth state management
+- Updated test helpers for better testing support

@@ -166,6 +166,7 @@ class AddEditExpenseSheet extends StackedView<AddEditExpenseSheetModel>
                   description: descriptionController.text,
                   amount: double.parse(amountController.text),
                   date: args.date ?? DateTime.now(),
+                  isRecurring: args.expense?.isRecurring ?? false,
                 );
                 completer?.call(SheetResponse(
                   confirmed: true,

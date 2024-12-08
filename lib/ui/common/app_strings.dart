@@ -6,25 +6,30 @@ const String ksNameRequired = 'Name is required';
 const String ksAmountRequired = 'Amount is required';
 const String ksAmountMustBeGreaterThanZero = 'Amount must be greater than 0';
 const String ksFileName = 'expense_manager_backup.json';
-const String ksFetchDataFromGdrive = 'Do you want to fetch your previous expense data from Google Drive?';
+const String ksFetchDataFromGdrive =
+    'Do you want to fetch your previous expense data from Google Drive?';
 
 const String ksBusyObjectFetchDataFromGdrive = 'fetchDataFromGdrive';
 
 // Drive Backup Service Constants
 const String ksDriveApiBaseUrl = 'https://www.googleapis.com/drive/v3';
-const String ksDriveUploadBaseUrl = 'https://www.googleapis.com/upload/drive/v3';
+const String ksDriveUploadBaseUrl =
+    'https://www.googleapis.com/upload/drive/v3';
 const String ksDriveAppFolderName = 'Expense Manager';
-const String ksDriveSecretSalt = 'g/otWW+8Ycnne0MUr9XAu5gUQnfIdcQbpoIjz7P1EX44RI+Rxuderb6l0Lyw0j7+OqCXhvSsG05U0LNxwk/jgw==';
+const String ksDriveSecretSalt =
+    'g/otWW+8Ycnne0MUr9XAu5gUQnfIdcQbpoIjz7P1EX44RI+Rxuderb6l0Lyw0j7+OqCXhvSsG05U0LNxwk/jgw==';
 
 // Drive Error Messages
-const String ksEncryptionNotInitialized = 'Encryption not initialized. Call initializeEncryption first.';
+const String ksEncryptionNotInitialized =
+    'Encryption not initialized. Call initializeEncryption first.';
 const String ksFolderCreationError = 'Failed to create or find app folder';
 const String ksErrorCreatingFolder = 'Error creating folder: ';
 const String ksErrorUploadingFile = 'Error uploading file to Drive: ';
 const String ksErrorReadingFile = 'Error reading file from Drive: ';
 const String ksErrorListingFiles = 'Error listing files from Drive: ';
 const String ksErrorDeletingFile = 'Error deleting file from Drive: ';
-const String ksErrorReadingFileByName = 'Error reading file by name from Drive: ';
+const String ksErrorReadingFileByName =
+    'Error reading file by name from Drive: ';
 const String ksErrorRevokingToken = 'Error revoking access token: ';
 
 // All Expenses ViewModel Constants
@@ -43,7 +48,8 @@ const String ksSampleExpense = 'Sample expense for ';
 const String ksAllExpensesTitle = 'All Expenses';
 const String ksNoExpensesMessage = 'No expenses found for the selected period';
 const String ksDeleteExpenseConfirmation = 'Delete Expense?';
-const String ksDeleteExpenseDescription = 'Are you sure you want to delete this expense?';
+const String ksDeleteExpenseDescription =
+    'Are you sure you want to delete this expense?';
 const String ksDelete = 'Delete';
 const String ksCancel = 'Cancel';
 const String ksEdit = 'Edit';
@@ -55,4 +61,3 @@ const String ksSessionExpired = 'Your session has expired. Please login again.';
 const String ksTokenValidationError = 'Token validation error: ';
 const String ksGoogleTokenValidationError = 'Google token validation error: ';
 const String ksTokenValidationRequestError = 'Token validation request error: ';
-

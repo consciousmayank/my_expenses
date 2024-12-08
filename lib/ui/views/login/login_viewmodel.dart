@@ -33,7 +33,8 @@ class LoginViewModel extends BaseViewModel {
           user: _authService.currentUser!,
           accessToken: userCredential.credential!.accessToken,
         );
-        locator<DriveBackupService>().initializeEncryption(_authService.currentUser!.email ?? '');
+        locator<DriveBackupService>()
+            .initializeEncryption(_authService.currentUser!.email ?? '');
         await _routerService.replaceWithHomeView();
       } else {
         _errorMessage = 'Sign in failed. Please try again.';

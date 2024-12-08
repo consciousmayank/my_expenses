@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:expense_manager/models/expense.dart';
+import 'package:expense_manager/models/recurring_expense.dart';
 import 'package:http/http.dart' as http;
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:crypto/crypto.dart';
@@ -29,7 +31,7 @@ class DriveBackupService {
     final hash = sha256.convert(emailBytes);
     // Use the hash bytes as encryption key
     _key = encrypt.Key(Uint8List.fromList(hash.bytes));
-    
+
     // Use first 16 bytes of hash as IV (AES requires 16 bytes IV)
     final ivBytes = Uint8List.fromList(hash.bytes.sublist(0, 16));
     _iv = encrypt.IV(ivBytes);
@@ -113,10 +115,9 @@ class DriveBackupService {
     required String accessToken,
     required String fileName,
     required String content,
-    String? existingFileId,  // Optional: ID of existing file to update
+    String? existingFileId,
   }) async {
     try {
-
       // Get or create the app folder
       final folderId = await _getOrCreateAppFolder(accessToken);
       if (folderId == null) {
@@ -131,37 +132,31 @@ class DriveBackupService {
 
       String? fileId;
       if (existingFiles.isNotEmpty) {
-        // Update existing file logic
         fileId = existingFiles.first['id'];
-        // Create unique boundary for multipart request
         final boundary = 'boundary-${DateTime.now().millisecondsSinceEpoch}';
         final headers = {
           'Authorization': 'Bearer $accessToken',
           'Content-Type': 'multipart/related; boundary=$boundary',
         };
 
-        // Prepare metadata for existing file
         final metadata = {
           'name': fileName,
         };
 
-        // Create multipart request parts
-        // First part: metadata in JSON format
+        // Encrypt the content before uploading
+        final encryptedContent = _encryptData(content);
+        
         final metadataPart = '--$boundary\r\n'
             'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             '${json.encode(metadata)}\r\n';
 
-        // Second part: encrypted file content
-        final encryptedContent = _encryptData(content);
         final contentPart = '--$boundary\r\n'
             'Content-Type: application/json\r\n\r\n'
             '$encryptedContent\r\n'
             '--$boundary--';
 
-        // Combine parts into final request body
         final body = metadataPart + contentPart;
 
-        // Send PATCH request to update existing file
         final uri = Uri.parse('$_uploadBaseUrl/files/$fileId?uploadType=multipart');
         final response = await http.patch(uri, headers: headers, body: body);
 
@@ -170,20 +165,17 @@ class DriveBackupService {
           return responseData['id'];
         }
       } else {
-        // Create new file logic
         final boundary = 'boundary-${DateTime.now().millisecondsSinceEpoch}';
         final headers = {
           'Authorization': 'Bearer $accessToken',
           'Content-Type': 'multipart/related; boundary=$boundary',
         };
 
-        // Prepare metadata for new file, including parent folder
         final metadata = {
           'name': fileName,
-          'parents': [folderId],  // Place file in app folder
+          'parents': [folderId], // Place file in app folder
         };
 
-        // Create multipart request parts similar to update logic
         final metadataPart = '--$boundary\r\n'
             'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             '${json.encode(metadata)}\r\n';
@@ -196,7 +188,6 @@ class DriveBackupService {
 
         final body = metadataPart + contentPart;
 
-        // Send POST request to create new file
         final uri = Uri.parse('$_uploadBaseUrl/files?uploadType=multipart');
         final response = await http.post(uri, headers: headers, body: body);
 
@@ -254,7 +245,7 @@ class DriveBackupService {
   // List files in Google Drive with optional query parameter
   Future<List<Map<String, String>>> listFiles({
     required String accessToken,
-    String? query,  // Optional query to filter files
+    String? query, // Optional query to filter files
   }) async {
     try {
       // Set up authentication header
@@ -358,6 +349,89 @@ class DriveBackupService {
       await http.get(uri);
     } catch (e) {
       print('$ksErrorRevokingToken$e');
+    }
+  }
+
+  // Add method to backup both expenses and recurring expenses
+  Future<bool> backupData({
+    required String accessToken,
+    required List<Expense> expenses,
+    required List<RecurringExpense> recurringExpenses,
+  }) async {
+    try {
+      final backupContent = json.encode({
+        'expenses': expenses.map((e) => e.toJson()).toList(),
+        'recurringExpenses': recurringExpenses.map((e) => e.toJson()).toList(),
+        'backupDate': DateTime.now().toIso8601String(),
+        'version': '1.0',
+      });
+
+      final fileId = await uploadFile(
+        accessToken: accessToken,
+        fileName: ksFileName,
+        content: backupContent,
+      );
+
+      return fileId != null;
+    } catch (e) {
+      print('Error backing up data: $e');
+      return false;
+    }
+  }
+
+  // Update restore functionality to handle recurring expenses
+  Future<Map<String, dynamic>> restoreData({
+    required String accessToken,
+  }) async {
+    try {
+      final result = await readFileByName(
+        accessToken: accessToken,
+        fileName: ksFileName,
+      );
+
+      if (result['content'] == null) {
+        return {
+          'success': false,
+          'error': 'No backup file found',
+          'expenses': <Expense>[],
+          'recurringExpenses': <RecurringExpense>[],
+        };
+      }
+
+      final Map<String, dynamic> backupData = json.decode(result['content']!);
+      
+      // Parse regular expenses
+      final List<Expense> expenses = (backupData['expenses'] as List)
+          .where((element) {
+            final isRecurring = (element as Map<String, dynamic>)['isRecurring'];
+            return isRecurring == null || isRecurring == false;
+          })
+          .map((json) => Expense.fromJson(json))
+          .toList();
+
+      // Parse recurring expenses  
+      final List<RecurringExpense> recurringExpenses = 
+          (backupData['recurringExpenses'] as List? ?? [])
+          .where((element) {
+            final isRecurring = (element as Map<String, dynamic>)['isRecurring'];
+            return isRecurring == null || isRecurring == false;
+          })
+          .map((json) => RecurringExpense.fromJson(json))
+          .toList();
+
+      return {
+        'success': true,
+        'expenses': expenses,
+        'recurringExpenses': recurringExpenses,
+      };
+    } catch (e) {
+      print('Error restoring data: $e');
+      return {
+        'success': false,
+        'error': e.toString(),
+        'expenses': <Expense>[],
+        'recurringExpenses': <RecurringExpense>[],
+      };
     }
   }
 }

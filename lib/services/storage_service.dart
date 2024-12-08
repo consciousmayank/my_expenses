@@ -63,10 +63,13 @@ class StorageService implements InitializableDependency {
     if (!Hive.isAdapterRegistered(HiveTypeIdRecurringExpense)) {
       Hive.registerAdapter(RecurringExpenseAdapter());
     }
-
     if (!Hive.isAdapterRegistered(HiveTypeIdLoggedInUser)) {
       Hive.registerAdapter(LoggedInUserAdapter());
     }
+    if (!Hive.isAdapterRegistered(HiveTypeIdRecurringExpenseType)) {
+      Hive.registerAdapter(RecurringExpenseTypeAdapter());
+    }
+
     await Hive.initFlutter();
     _expensesBox = await _openBox<Expense>(boxName: expensesBox);
     _recurringExpensesBox =
@@ -108,15 +111,47 @@ class StorageService implements InitializableDependency {
   }
 
   Future<void> saveRecurringExpense(RecurringExpense expense) async {
-    await _recurringExpensesBox.put(_uuid.v4(), expense);
+    expense = expense.copyWith(id: _uuid.v4());
+    await _recurringExpensesBox.put(expense.id, expense);
+
+    // Generate and save individual expense instances
+    final occurrences = expense.getOccurrences();
+    print('Generated ${occurrences.length} occurrences for recurring expense');
+
+    for (var date in occurrences) {
+      final individualExpense = Expense(
+        name: expense.name,
+        description: expense.description,
+        amount: expense.amount,
+        date: date,
+        isRecurring: true,
+        id: '${expense.id}_${date.toIso8601String()}',
+      );
+      await saveExpense(expense: individualExpense);
+    }
+  }
+
+  Future<void> updateRecurringExpense(RecurringExpense expense) async {
+    // Delete old instances
+    await deleteRecurringExpense(expense.id!);
+    // Save updated recurring expense
+    await saveRecurringExpense(expense);
+  }
+
+  Future<void> deleteRecurringExpense(String id) async {
+    // Delete the recurring expense
+    await _recurringExpensesBox.delete(id);
+
+    // Delete all individual expense instances
+    final expenses =
+        _expensesBox.values.where((e) => e.id?.startsWith(id) ?? false);
+    for (var expense in expenses) {
+      deleteExpense(expense);
+    }
   }
 
   Future<List<RecurringExpense>> getRecurringExpenses() async {
     return _recurringExpensesBox.values.toList();
-  }
-
-  Future<void> deleteRecurringExpense(String id) async {
-    await _recurringExpensesBox.delete(id);
   }
 
   saveLoggedInUser({required User user, required String? accessToken}) async {
@@ -145,7 +180,11 @@ class StorageService implements InitializableDependency {
   }
 
   void deleteExpense(Expense expense) async {
-    await _expensesBox.delete(expense.id);
+    if (expense.isRecurring) {
+      await deleteRecurringExpense(expense.id!);
+    } else {
+      await _expensesBox.delete(expense.id);
+    }
   }
 
   Future<void> updateExpense({required Expense? expense}) async {
@@ -185,4 +224,24 @@ class StorageService implements InitializableDependency {
   //   await recurringBox.clear();
   //   await namesBox.clear();
   // }
+
+  Future<void> restoreFromBackup({
+    required List<Expense> expenses,
+    required List<RecurringExpense> recurringExpenses,
+  }) async {
+    // Clear existing data
+    await _expensesBox.clear();
+    await _recurringExpensesBox.clear();
+    await _expenseNamesBox.clear();
+
+    // Restore regular expenses
+    for (var expense in expenses) {
+      await saveExpense(expense: expense, isBackup: true);
+    }
+
+    // Restore recurring expenses
+    for (var recurringExpense in recurringExpenses) {
+      await saveRecurringExpense(recurringExpense);
+    }
+  }
 }

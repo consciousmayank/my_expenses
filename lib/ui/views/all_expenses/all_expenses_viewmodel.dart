@@ -5,6 +5,7 @@ import 'package:expense_manager/app/app.locator.dart';
 import 'package:expense_manager/app/app.router.dart';
 import 'package:expense_manager/extensions/date_format_extension.dart';
 import 'package:expense_manager/models/logged_in_user.dart';
+import 'package:expense_manager/models/recurring_expense.dart';
 import 'package:expense_manager/services/app_authentication_service.dart';
 import 'package:expense_manager/services/drive_backup_service.dart';
 import 'package:expense_manager/services/storage_service.dart';
@@ -36,10 +37,20 @@ class AllExpensesViewModel extends BaseViewModel {
 
   List<Expense> _allExpenses = [];
   List<Expense> _filteredExpenses = [];
+  List<Expense> _recurringExpenses = [];
 
   final _authService = locator<AppAuthenticationService>();
 
-  List<Expense> get filteredExpenses => _filteredExpenses;
+  List<Expense> get filteredExpenses {
+    final List<Expense> combined = [
+      ..._recurringExpenses,
+      ..._filteredExpenses
+    ];
+    print('Combined expenses count: ${combined.length}');
+    return combined;
+  }
+
+  List<Expense> get recurringExpensesForSelectedDate => _recurringExpenses;
 
   int get selectedYear => _selectedYear;
   int? get selectedMonth => _selectedMonth;
@@ -75,11 +86,19 @@ class AllExpensesViewModel extends BaseViewModel {
     if ((await _storageService.getAllExpenses()).isEmpty) {
       await fetchDataFromGdrive();
     }
-    // final sampleData = Expense.generateSampleExpensesJson();
+
+    // Load all expenses
     final sampleData = await _storageService.getAllExpensesAsMap();
     _allExpenses = (sampleData['expenses'] as List)
         .map((e) => Expense.fromJson(e))
         .toList();
+
+    // Sort expenses with recurring ones first, then by date
+    _allExpenses.sort((a, b) {
+      if (a.isRecurring && !b.isRecurring) return -1;
+      if (!a.isRecurring && b.isRecurring) return 1;
+      return b.date.compareTo(a.date);
+    });
 
     // Get unique years from expenses
     _availableYears = _allExpenses.map((e) => e.date.year).toSet().toList()
@@ -94,7 +113,10 @@ class AllExpensesViewModel extends BaseViewModel {
   }
 
   void _filterExpenses() {
+    // Filter regular expenses
     _filteredExpenses = _allExpenses.where((expense) {
+      if (expense.isRecurring) return false; // Skip recurring expenses here
+
       // Filter by year
       if (expense.date.year != _selectedYear) return false;
 
@@ -110,6 +132,25 @@ class AllExpensesViewModel extends BaseViewModel {
 
       return true;
     }).toList();
+
+    // Filter recurring expenses separately
+    _recurringExpenses = _allExpenses.where((expense) {
+      if (!expense.isRecurring) return false;
+
+      // Only show recurring expenses for the selected date
+      if (_selectedYear != expense.date.year) return false;
+      if (_selectedMonth != null && _selectedMonth != expense.date.month)
+        return false;
+      if (_selectedDay != null && _selectedDay != expense.date.day)
+        return false;
+
+      return true;
+    }).toList();
+
+    print('Total expenses: ${_allExpenses.length}');
+    print('Regular expenses: ${_filteredExpenses.length}');
+    print('Recurring expenses: ${_recurringExpenses.length}');
+
     notifyListeners();
   }
 
@@ -206,24 +247,23 @@ class AllExpensesViewModel extends BaseViewModel {
         return;
       }
       final expenses = await _storageService.getAllExpenses();
+      final recurringExpenses = await _storageService.getRecurringExpenses();
 
-      final backupContent = json.encode({
-        'expenses': expenses.map((e) => e.toJson()).toList(),
-        'backupDate': DateTime.now().toFormattedString(),
-        'version': '1.0',
-      });
-
-      final fileId = await _driveBackupService.uploadFile(
+      final success = await _driveBackupService.backupData(
         accessToken: loggedInUser!.accessToken!,
-        fileName: ksFileName,
-        content: backupContent,
+        expenses: expenses,
+        recurringExpenses: recurringExpenses,
       );
 
-      _snackbarService.showCustomSnackBar(
-        variant: SnackbarType.success,
-        message: 'Backup successful',
-        duration: const Duration(seconds: 3),
-      );
+      if (success) {
+        _snackbarService.showCustomSnackBar(
+          variant: SnackbarType.success,
+          message: 'Backup successful',
+          duration: const Duration(seconds: 3),
+        );
+      } else {
+        throw Exception('Backup failed');
+      }
     } catch (e) {
       _errorMessage = e.toString();
       _snackbarService.showCustomSnackBar(
@@ -240,35 +280,30 @@ class AllExpensesViewModel extends BaseViewModel {
     setBusy(true);
     _errorMessage = null;
     try {
-
       if (!await checkIfTokenIsValid()) {
         return;
       }
-      
-      final result = await _driveBackupService.readFileByName(
+
+      final result = await _driveBackupService.restoreData(
         accessToken: loggedInUser!.accessToken!,
-        fileName: ksFileName,
       );
 
-      if (result['content'] == null) {
-        throw Exception('Backup file not found on Google Drive');
+      if (!result['success']) {
+        throw Exception(result['error'] ?? 'Restore failed');
       }
 
-      final Map<String, dynamic> backupData = json.decode(result['content']!);
-      final List<dynamic> expensesJson = backupData['expenses'];
-
-      final expenses =
-          expensesJson.map((json) => Expense.fromJson(json)).toList();
-
-      // Save to local storage
-      await _storageService.restoreExpenses(expenses);
+      await _storageService.restoreFromBackup(
+        expenses: result['expenses'],
+        recurringExpenses: result['recurringExpenses'],
+      );
 
       _snackbarService.showCustomSnackBar(
         variant: SnackbarType.success,
-        message: 'Restored ${expenses.length} expenses successfully',
+        message: 'Restore successful',
         duration: const Duration(seconds: 3),
       );
-      initialise();
+      
+      await initialise();
     } catch (e) {
       _errorMessage = e.toString();
       _snackbarService.showCustomSnackBar(
@@ -292,7 +327,9 @@ class AllExpensesViewModel extends BaseViewModel {
     final SheetResponse? response = await _bottomSheetService.showCustomSheet(
       variant: BottomSheetType.editDelete,
       title: 'Choose an option',
-      description: 'You can edit or delete the expense',
+      description: expense.isRecurring
+          ? 'This is a recurring expense. Editing or deleting it will affect all future occurrences.'
+          : 'You can edit or delete the expense',
       data: EditDeleteExpenseSheetArgs(
         expense: expense,
       ),
@@ -301,7 +338,15 @@ class AllExpensesViewModel extends BaseViewModel {
     if (response != null && response.confirmed) {
       EditDeleteExpenseSheetResponse deletedExpense = response.data;
       if (deletedExpense.option == EditDeleteExpenseSheetOption.delete) {
-        _storageService.deleteExpense(deletedExpense.expense!);
+        if (expense.isRecurring) {
+          // Extract the recurring expense ID from the individual expense ID
+          final recurringId = expense.id?.split('_')[0];
+          if (recurringId != null) {
+            await _storageService.deleteRecurringExpense(recurringId);
+          }
+        } else {
+          _storageService.deleteExpense(deletedExpense.expense!);
+        }
         initialise();
       } else {
         showAddExpenseBottomSheet(expense: deletedExpense.expense);
@@ -373,36 +418,17 @@ class AllExpensesViewModel extends BaseViewModel {
     initialise();
   }
 
-  Future<Expense?> showAddRecurringExpenseBottomSheet() async {
-    _bottomSheetService
-        .showCustomSheet(
+  Future<void> showAddRecurringExpenseBottomSheet() async {
+    final SheetResponse? response = await _bottomSheetService.showCustomSheet(
       variant: BottomSheetType.recurringExpense,
       title: 'Recurring Expense',
-    )
-        .then((value) async {
-      if (value?.confirmed == true) {
-        final SheetResponse? response =
-            await _bottomSheetService.showCustomSheet(
-          enableDrag: true,
-          isScrollControlled: true,
-          variant: BottomSheetType.addEditExpense,
-          data: AddEditExpenseSheetArgs(
-            expense: null,
-            date: _selectedMonth != null && _selectedDay != null
-                ? DateTime(_selectedYear, _selectedMonth!, _selectedDay!)
-                : null,
-          ),
-        );
+    );
 
-        if (response != null && response.confirmed) {
-          AddEditExpenseSheetResponse addedExpense = response.data;
-          return addedExpense.expense;
-        } else {
-          return null;
-        }
-      }
-    });
-    return null;
+    if (response?.confirmed == true && response?.data != null) {
+      final RecurringExpense recurringExpense = response!.data;
+      await _storageService.saveRecurringExpense(recurringExpense);
+      await initialise(); // Refresh the list after adding
+    }
   }
 
   void showSnackbarservices() {
@@ -495,5 +521,9 @@ class AllExpensesViewModel extends BaseViewModel {
       return false;
     }
     return true;
+  }
+
+  void editExpense(Expense expense) {
+    showAddExpenseBottomSheet(expense: expense);
   }
 }

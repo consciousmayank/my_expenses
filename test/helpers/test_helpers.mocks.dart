@@ -620,6 +620,30 @@ class MockAppAuthenticationService extends _i1.Mock
       ) as _i4.Future<bool>);
 
   @override
+  _i4.Future<void> expireToken() => (super.noSuchMethod(
+        Invocation.method(
+          #expireToken,
+          [],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  _i4.Future<({String? error, String? token})> checkAndRefreshToken() =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #checkAndRefreshToken,
+          [],
+        ),
+        returnValue: _i4.Future<({String? error, String? token})>.value(
+            (error: null, token: null)),
+        returnValueForMissingStub:
+            _i4.Future<({String? error, String? token})>.value(
+                (error: null, token: null)),
+      ) as _i4.Future<({String? error, String? token})>);
+
+  @override
   _i4.Future<_i12.UserCredential?> signInWithGoogle() => (super.noSuchMethod(
         Invocation.method(
           #signInWithGoogle,
@@ -655,6 +679,15 @@ class MockAppAuthenticationService extends _i1.Mock
 /// See the documentation for Mockito's code generation for more information.
 class MockDriveBackupService extends _i1.Mock
     implements _i13.DriveBackupService {
+  @override
+  void initializeEncryption(String? userEmail) => super.noSuchMethod(
+        Invocation.method(
+          #initializeEncryption,
+          [userEmail],
+        ),
+        returnValueForMissingStub: null,
+      );
+
   @override
   _i4.Future<String?> uploadFile({
     required String? accessToken,
@@ -904,6 +937,27 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<void>);
 
   @override
+  _i4.Future<void> updateRecurringExpense(_i17.RecurringExpense? expense) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #updateRecurringExpense,
+          [expense],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> deleteRecurringExpense(String? id) => (super.noSuchMethod(
+        Invocation.method(
+          #deleteRecurringExpense,
+          [id],
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
+
+  @override
   _i4.Future<List<_i17.RecurringExpense>> getRecurringExpenses() =>
       (super.noSuchMethod(
         Invocation.method(
@@ -916,16 +970,6 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
             _i4.Future<List<_i17.RecurringExpense>>.value(
                 <_i17.RecurringExpense>[]),
       ) as _i4.Future<List<_i17.RecurringExpense>>);
-
-  @override
-  _i4.Future<void> deleteRecurringExpense(String? id) => (super.noSuchMethod(
-        Invocation.method(
-          #deleteRecurringExpense,
-          [id],
-        ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
 
   @override
   dynamic saveLoggedInUser({

@@ -16,7 +16,6 @@ class AppAuthenticationService {
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-
   // Helper method to check token validity
   Future<bool> _isTokenValid(String token) async {
     try {
@@ -50,7 +49,8 @@ class AppAuthenticationService {
       if (currentToken != null) {
         // Revoke the access token
         final response = await http.get(
-          Uri.parse('https://accounts.google.com/o/oauth2/revoke?token=$currentToken'),
+          Uri.parse(
+              'https://accounts.google.com/o/oauth2/revoke?token=$currentToken'),
         );
 
         if (response.statusCode != 200) {
@@ -60,7 +60,7 @@ class AppAuthenticationService {
 
       // Sign out from Google
       await _googleSignIn.signOut();
-      
+
       // Sign out from Firebase
       await _auth.signOut();
 
@@ -100,9 +100,9 @@ class AppAuthenticationService {
 
       try {
         // Try to refresh token
-        final GoogleSignInAuthentication googleAuth = 
+        final GoogleSignInAuthentication googleAuth =
             await currentUser.authentication;
-        
+
         // Save new token
         const storage = FlutterSecureStorage();
         await storage.write(key: 'accessToken', value: googleAuth.accessToken);

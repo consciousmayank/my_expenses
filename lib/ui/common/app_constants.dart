@@ -7,3 +7,4 @@ const double kdDesktopMaxContentHeight = 750;
 const int HiveTypeIdExpense = 0;
 const int HiveTypeIdRecurringExpense = 1;
 const int HiveTypeIdLoggedInUser = 2;
+const int HiveTypeIdRecurringExpenseType = 3;
