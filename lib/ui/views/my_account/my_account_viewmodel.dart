@@ -6,6 +6,7 @@ import 'package:expense_manager/models/expense.dart';
 import 'package:expense_manager/models/logged_in_user.dart';
 import 'package:expense_manager/services/drive_backup_service.dart';
 import 'package:expense_manager/services/storage_service.dart';
+import 'package:expense_manager/ui/common/app_strings.dart';
 import 'package:expense_manager/ui/views/login/login_view.dart';
 import 'package:intl/intl.dart';
 import 'package:stacked/stacked.dart';
@@ -38,7 +39,7 @@ class MyAccountViewModel extends BaseViewModel {
 
       final fileId = await _driveBackupService.uploadFile(
         accessToken: loggedInUser!.accessToken!,
-        fileName: 'expense_manager_backup.json',
+        fileName: ksFileName,
         content: backupContent,
       );
 
@@ -63,7 +64,7 @@ class MyAccountViewModel extends BaseViewModel {
     try {
       final result = await _driveBackupService.readFileByName(
         accessToken: loggedInUser!.accessToken!,
-        fileName: 'expense_manager_backup.json',
+        fileName: ksFileName,
       );
 
       if (result['content'] == null) {
