@@ -243,6 +243,7 @@ class AllExpensesViewModel extends BaseViewModel {
     setBusy(true);
     _errorMessage = null;
     try {
+      
       if (!await checkIfTokenIsValid()) {
         return;
       }

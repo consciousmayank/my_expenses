@@ -7,8 +7,16 @@ import 'package:http/http.dart' as http;
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:crypto/crypto.dart';
 import 'package:expense_manager/ui/common/app_strings.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class DriveBackupService {
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'https://www.googleapis.com/auth/drive.file',
+    ],
+  );
+
   // Base URLs for Google Drive API endpoints
   static const _driveApiBaseUrl = ksDriveApiBaseUrl;
   static const _uploadBaseUrl = ksDriveUploadBaseUrl;
@@ -65,49 +73,142 @@ class DriveBackupService {
     return decrypted;
   }
 
-  // Create or find the app's dedicated folder in Google Drive
-  Future<String?> _getOrCreateAppFolder(String accessToken) async {
+  // Add method to refresh token
+  Future<String?> _refreshAccessToken() async {
     try {
-      // First check if the app folder already exists
-      // Query uses specific mime type for folders and the app folder name
-      final files = await listFiles(
-        accessToken: accessToken,
-        query:
-            "name = '$_appFolderName' and mimeType = 'application/vnd.google-apps.folder'",
-      );
-
-      // If folder exists, return its ID
-      if (files.isNotEmpty) {
-        return files.first['id'];
+      print('Attempting to refresh access token...');
+      // First try silent sign in
+      var currentUser = await _googleSignIn.signInSilently();
+      
+      // If silent sign in fails, try interactive sign in
+      if (currentUser == null) {
+        print('Silent sign in failed, attempting interactive sign in...');
+        currentUser = await _googleSignIn.signIn();
       }
-
-      // If folder doesn't exist, create it
-      // Set up headers with authentication token
-      final headers = {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      };
-
-      // Prepare request body with folder metadata
-      final body = json.encode({
-        'name': _appFolderName,
-        'mimeType': 'application/vnd.google-apps.folder',
-      });
-
-      // Send POST request to create folder
-      final uri = Uri.parse('$_driveApiBaseUrl/files');
-      final response = await http.post(uri, headers: headers, body: body);
-
-      // If successful, return the new folder's ID
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        return responseData['id'];
+      
+      if (currentUser != null) {
+        final auth = await currentUser.authentication;
+        print('Successfully refreshed access token');
+        return auth.accessToken;
+      } else {
+        print('Failed to sign in user');
+        return null;
       }
-      return null;
     } catch (e) {
-      print('$ksErrorCreatingFolder$e');
+      print('Error refreshing token: $e');
       return null;
     }
+  }
+
+  // Add method to validate token
+  Future<bool> _isTokenValid(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=$accessToken'),
+      );
+      print('Token validation response status: ${response.statusCode}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error validating token: $e');
+      return false;
+    }
+  }
+
+  Future<String?> _getValidAccessToken(String accessToken) async {
+    print('Validating access token...');
+    if (await _isTokenValid(accessToken)) {
+      print('Token is valid');
+      return accessToken;
+    }
+    print('Token is invalid, attempting to refresh...');
+    final newToken = await _refreshAccessToken();
+    if (newToken == null) {
+      print('Failed to refresh token, attempting interactive sign in...');
+      final currentUser = await _googleSignIn.signIn();
+      if (currentUser != null) {
+        final auth = await currentUser.authentication;
+        return auth.accessToken;
+      }
+    }
+    return newToken;
+  }
+
+  // Create or find the app's dedicated folder in Google Drive
+  Future<String?> _getOrCreateAppFolder(String accessToken) async {
+    int retryCount = 0;
+    const maxRetries = 3;
+
+    Future<String?> attempt() async {
+      try {
+        print('Attempting to find or create app folder: $_appFolderName (Attempt ${retryCount + 1}/$maxRetries)');
+        
+        // Validate/refresh token first
+        final validToken = await _getValidAccessToken(accessToken);
+        if (validToken == null) {
+          print('Failed to obtain valid access token');
+          throw Exception('Failed to obtain valid access token');
+        }
+
+        // First check if the app folder already exists
+        final files = await listFiles(
+          accessToken: validToken,
+          query: "name = '$_appFolderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        );
+
+        if (files.isNotEmpty) {
+          print('Found existing app folder with ID: ${files.first['id']}');
+          return files.first['id'];
+        }
+
+        print('App folder not found. Creating new folder...');
+
+        final headers = {
+          'Authorization': 'Bearer $validToken',
+          'Content-Type': 'application/json',
+        };
+
+        final body = json.encode({
+          'name': _appFolderName,
+          'mimeType': 'application/vnd.google-apps.folder',
+        });
+
+        final uri = Uri.parse('$_driveApiBaseUrl/files');
+        print('Sending folder creation request...');
+        final response = await http.post(uri, headers: headers, body: body);
+
+        print('Folder creation response status: ${response.statusCode}');
+        print('Folder creation response body: ${response.body}');
+
+        if (response.statusCode == 401) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw Exception('Failed to authenticate after $maxRetries attempts. Please login again.');
+          }
+          print('Token expired during request, retrying (Attempt ${retryCount + 1}/$maxRetries)...');
+          final newToken = await _refreshAccessToken();
+          if (newToken != null) {
+            return attempt();
+          }
+          throw Exception('Failed to refresh token');
+        }
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          print('Successfully created app folder with ID: ${responseData['id']}');
+          return responseData['id'];
+        } else {
+          print('Failed to create folder. Status code: ${response.statusCode}');
+          print('Error response: ${response.body}');
+          throw Exception('Failed to create folder: ${response.body}');
+        }
+      } catch (e, stackTrace) {
+        print('Error creating folder: $e');
+        print('Stack trace: $stackTrace');
+        rethrow;
+      }
+    }
+
+    return attempt();
   }
 
   // Upload or update a file in Google Drive
@@ -118,24 +219,37 @@ class DriveBackupService {
     String? existingFileId,
   }) async {
     try {
-      // Get or create the app folder
-      final folderId = await _getOrCreateAppFolder(accessToken);
+      print('Starting file upload process for: $fileName');
+      
+      // Validate/refresh token first
+      final validToken = await _getValidAccessToken(accessToken);
+      if (validToken == null) {
+        print('Failed to obtain valid access token');
+        throw Exception('Failed to obtain valid access token');
+      }
+
+      final folderId = await _getOrCreateAppFolder(validToken);
       if (folderId == null) {
+        print('Failed to get or create app folder');
         throw Exception(ksFolderCreationError);
       }
 
+      print('Using folder ID: $folderId');
+
       // Check if file already exists in the app folder
+      print('Checking for existing file...');
       final existingFiles = await listFiles(
-        accessToken: accessToken,
+        accessToken: validToken,
         query: "name = '$fileName' and '${folderId}' in parents",
       );
 
       String? fileId;
       if (existingFiles.isNotEmpty) {
+        print('Found existing file, updating...');
         fileId = existingFiles.first['id'];
         final boundary = 'boundary-${DateTime.now().millisecondsSinceEpoch}';
         final headers = {
-          'Authorization': 'Bearer $accessToken',
+          'Authorization': 'Bearer $validToken',
           'Content-Type': 'multipart/related; boundary=$boundary',
         };
 
@@ -144,6 +258,7 @@ class DriveBackupService {
         };
 
         // Encrypt the content before uploading
+        print('Encrypting content...');
         final encryptedContent = _encryptData(content);
         
         final metadataPart = '--$boundary\r\n'
@@ -157,30 +272,38 @@ class DriveBackupService {
 
         final body = metadataPart + contentPart;
 
+        print('Sending file update request...');
         final uri = Uri.parse('$_uploadBaseUrl/files/$fileId?uploadType=multipart');
         final response = await http.patch(uri, headers: headers, body: body);
 
+        print('File update response status: ${response.statusCode}');
+        print('File update response body: ${response.body}');
+
         if (response.statusCode == 200) {
           final responseData = json.decode(response.body);
+          print('Successfully updated file with ID: ${responseData['id']}');
           return responseData['id'];
         }
       } else {
+        print('Creating new file...');
         final boundary = 'boundary-${DateTime.now().millisecondsSinceEpoch}';
         final headers = {
-          'Authorization': 'Bearer $accessToken',
+          'Authorization': 'Bearer $validToken',
           'Content-Type': 'multipart/related; boundary=$boundary',
         };
 
         final metadata = {
           'name': fileName,
-          'parents': [folderId], // Place file in app folder
+          'parents': [folderId],
         };
 
+        print('Encrypting content...');
+        final encryptedContent = _encryptData(content);
+        
         final metadataPart = '--$boundary\r\n'
             'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             '${json.encode(metadata)}\r\n';
 
-        final encryptedContent = _encryptData(content);
         final contentPart = '--$boundary\r\n'
             'Content-Type: application/json\r\n\r\n'
             '$encryptedContent\r\n'
@@ -188,18 +311,27 @@ class DriveBackupService {
 
         final body = metadataPart + contentPart;
 
+        print('Sending file creation request...');
         final uri = Uri.parse('$_uploadBaseUrl/files?uploadType=multipart');
         final response = await http.post(uri, headers: headers, body: body);
 
+        print('File creation response status: ${response.statusCode}');
+        print('File creation response body: ${response.body}');
+
         if (response.statusCode == 200) {
           final responseData = json.decode(response.body);
+          print('Successfully created file with ID: ${responseData['id']}');
           return responseData['id'];
         }
       }
       return null;
     } catch (e) {
-      print('$ksErrorUploadingFile$e');
-      return null;
+      print('Error uploading file to Drive: $e');
+      if (e.toString().contains('UNAUTHENTICATED') || 
+          e.toString().contains('Invalid Credentials')) {
+        throw Exception('Authentication failed. Please sign in again.');
+      }
+      rethrow;
     }
   }
 
@@ -284,27 +416,27 @@ class DriveBackupService {
   }
 
   // Delete a file from Google Drive
-  Future<bool> deleteFile({
-    required String accessToken,
-    required String fileId,
-  }) async {
-    try {
-      // Set up authentication header
-      final headers = {
-        'Authorization': 'Bearer $accessToken',
-      };
+  // Future<bool> deleteFile({
+  //   required String accessToken,
+  //   required String fileId,
+  // }) async {
+  //   try {
+  //     // Set up authentication header
+  //     final headers = {
+  //       'Authorization': 'Bearer $accessToken',
+  //     };
 
-      // Send DELETE request
-      final uri = Uri.parse('$_driveApiBaseUrl/files/$fileId');
-      final response = await http.delete(uri, headers: headers);
+  //     // Send DELETE request
+  //     final uri = Uri.parse('$_driveApiBaseUrl/files/$fileId');
+  //     final response = await http.delete(uri, headers: headers);
 
-      // Return true if deletion was successful (204 No Content)
-      return response.statusCode == 204;
-    } catch (e) {
-      print('$ksErrorDeletingFile$e');
-      return false;
-    }
-  }
+  //     // Return true if deletion was successful (204 No Content)
+  //     return response.statusCode == 204;
+  //   } catch (e) {
+  //     print('$ksErrorDeletingFile$e');
+  //     return false;
+  //   }
+  // }
 
   // Read a file by its name from the app's folder
   Future<Map<String, String?>> readFileByName({

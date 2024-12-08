@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -127,7 +129,7 @@ class AppAuthenticationService {
     try {
       // Check Google Play Services first
       final hasGooglePlayServices = await checkGooglePlayServices();
-      if (!hasGooglePlayServices && !kIsWeb) {
+      if (!hasGooglePlayServices && Platform.isAndroid) {
         throw Exception('Google Play Services not available');
       }
 
