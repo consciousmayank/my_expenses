@@ -12,6 +12,7 @@ import '../ui/bottom_sheets/calender/calender_sheet.dart';
 import '../ui/bottom_sheets/edit_delete/edit_delete_sheet.dart';
 import '../ui/bottom_sheets/my_account/my_account_sheet.dart';
 import '../ui/bottom_sheets/notice/notice_sheet.dart';
+import '../ui/bottom_sheets/recurring_expense/recurring_expense_sheet.dart';
 import '../ui/bottom_sheets/view/view_sheet.dart';
 
 enum BottomSheetType {
@@ -21,6 +22,7 @@ enum BottomSheetType {
   addEditExpense,
   calender,
   myAccount,
+  recurringExpense,
 }
 
 void setupBottomSheetUi() {
@@ -39,6 +41,8 @@ void setupBottomSheetUi() {
         CalenderSheet(request: request, completer: completer),
     BottomSheetType.myAccount: (context, request, completer) =>
         MyAccountSheet(request: request, completer: completer),
+    BottomSheetType.recurringExpense: (context, request, completer) =>
+        RecurringExpenseSheet(request: request, completer: completer),
   };
 
   bottomsheetService.setCustomSheetBuilders(builders);

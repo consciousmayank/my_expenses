@@ -1,5 +1,8 @@
 import 'package:expense_manager/extensions/string_format_extensions.dart';
 import 'package:expense_manager/extensions/textstyles_extension.dart';
+import 'package:expense_manager/models/expense.dart';
+import 'package:expense_manager/ui/common/app_strings.dart';
+import 'package:expense_manager/ui/common/ui_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:stacked/stacked.dart';
@@ -33,9 +36,12 @@ class AllExpensesViewMobile extends ViewModelWidget<AllExpensesViewModel> {
           ),
         ),
         actions: [
-          PopupMenuButton(
-            icon: const Icon(Icons.more_vert),
-            itemBuilder: (context) => [
+          SkeletonLoader(
+            cornerRadius: 20,
+            loading: viewModel.busy(ksBusyObjectFetchDataFromGdrive),
+            child: PopupMenuButton(
+              icon: const Icon(Icons.more_vert),
+              itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'changeDate',
                 child: Row(
@@ -76,6 +82,19 @@ class AllExpensesViewMobile extends ViewModelWidget<AllExpensesViewModel> {
                 ),
               ),
               PopupMenuItem(
+                value: 'recurringExpenses',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.repeat_outlined,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('Add Recurring Expenses'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
                 value: 'logout',
                 child: Row(
                   children: [
@@ -89,7 +108,7 @@ class AllExpensesViewMobile extends ViewModelWidget<AllExpensesViewModel> {
                 ),
               ),
             ],
-            onSelected: (value) {
+            onSelected: (value) async {
               // Handle menu item selection
               switch (value) {
                 case 'changeDate':
@@ -104,9 +123,17 @@ class AllExpensesViewMobile extends ViewModelWidget<AllExpensesViewModel> {
                 case 'logout':
                   viewModel.logout();
                   break;
+                case 'recurringExpenses':
+                  Expense? reccuringExpense =
+                      await viewModel.showAddRecurringExpenseBottomSheet();
+                  if (reccuringExpense != null) {
+                    // viewModel.addExpense(expense: reccuringExpense);
+                  }
+                  break;
               }
             },
-          ),
+          )),
+        horizontalSpaceTiny,
         ],
       ),
       body: viewModel.isBusy
@@ -120,62 +147,62 @@ class AllExpensesViewMobile extends ViewModelWidget<AllExpensesViewModel> {
               : Column(
                   children: [
                     Expanded(
-                  child: ListView.builder(
-                    itemCount: viewModel.filteredExpenses.length,
-                    itemBuilder: (context, index) {
-                      final expense = viewModel.filteredExpenses[index];
-                      return Slidable(
-                        endActionPane: ActionPane(
-                          motion: const BehindMotion(),
-                          children: [
-                            SlidableAction(
-                              onPressed: (context) {
-                                viewModel.showAddExpenseBottomSheet(
-                                    expense: expense);
-                              },
-                              backgroundColor: Colors.grey.shade200,
-                              foregroundColor: Colors.black38,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                bottomLeft: Radius.circular(8),
-                              ),
-                              icon: Icons.edit,
-                              label: 'Edit',
+                      child: ListView.builder(
+                        itemCount: viewModel.filteredExpenses.length,
+                        itemBuilder: (context, index) {
+                          final expense = viewModel.filteredExpenses[index];
+                          return Slidable(
+                            endActionPane: ActionPane(
+                              motion: const BehindMotion(),
+                              children: [
+                                SlidableAction(
+                                  onPressed: (context) {
+                                    viewModel.showAddExpenseBottomSheet(
+                                        expense: expense);
+                                  },
+                                  backgroundColor: Colors.grey.shade200,
+                                  foregroundColor: Colors.black38,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    bottomLeft: Radius.circular(8),
+                                  ),
+                                  icon: Icons.edit,
+                                  label: 'Edit',
+                                ),
+                                const SizedBox(width: 2),
+                                SlidableAction(
+                                  onPressed: (context) {
+                                    viewModel.deleteExpense(expense);
+                                  },
+                                  backgroundColor: Colors.grey.shade200,
+                                  foregroundColor: Colors.black38,
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(8),
+                                    bottomRight: Radius.circular(8),
+                                  ),
+                                  icon: Icons.delete,
+                                  label: 'Delete',
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 2),
-                            SlidableAction(
-                              onPressed: (context) {
-                                viewModel.deleteExpense(expense);
-                              },
-                              backgroundColor: Colors.grey.shade200,
-                              foregroundColor: Colors.black38,
-                              borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(8),
-                                bottomRight: Radius.circular(8),
+                            child: ListTile(
+                              title: Text(expense.name),
+                              subtitle: Text(expense.description ?? ''),
+                              trailing: Text(
+                                '₹${expense.amount.toStringAsFixed(2).toIndianFormat()}',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                              icon: Icons.delete,
-                              label: 'Delete',
                             ),
-                          ],
-                        ),
-                        child: ListTile(
-                          title: Text(expense.name),
-                          subtitle: Text(expense.description ?? ''),
-                          trailing: Text(
-                            '₹${expense.amount.toStringAsFixed(2).toIndianFormat()}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
       bottomNavigationBar: AbsorbPointer(
         absorbing: viewModel.isBusy,
         child: Container(
-          height: kToolbarHeight * 1.3,
+          height: kToolbarHeight * 1.5,
           decoration: BoxDecoration(
             color: viewModel.isBusy
                 ? Theme.of(context).colorScheme.inversePrimary.withOpacity(0.5)

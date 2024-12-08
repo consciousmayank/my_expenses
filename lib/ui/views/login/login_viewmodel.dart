@@ -1,7 +1,9 @@
 import 'package:expense_manager/app/app.locator.dart';
 import 'package:expense_manager/app/app.router.dart';
 import 'package:expense_manager/services/app_authentication_service.dart';
+import 'package:expense_manager/services/drive_backup_service.dart';
 import 'package:expense_manager/services/storage_service.dart';
+import 'package:expense_manager/setup/setup_snackbar_ui.dart';
 import 'package:stacked/stacked.dart';
 import 'package:stacked_services/stacked_services.dart';
 
@@ -31,13 +33,15 @@ class LoginViewModel extends BaseViewModel {
           user: _authService.currentUser!,
           accessToken: userCredential.credential!.accessToken,
         );
+        locator<DriveBackupService>().initializeEncryption(_authService.currentUser!.email ?? '');
         await _routerService.replaceWithHomeView();
       } else {
         _errorMessage = 'Sign in failed. Please try again.';
       }
     } catch (e) {
       _errorMessage = e.toString();
-      _snackbarService.showSnackbar(
+      _snackbarService.showCustomSnackBar(
+        variant: SnackbarType.error,
         message: _errorMessage!,
         duration: const Duration(seconds: 3),
       );

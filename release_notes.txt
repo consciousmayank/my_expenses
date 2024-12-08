@@ -1,0 +1,3 @@
+Version Updates:
+1. Expense backup and restore now checks if the token is valid before proceeding.
+2. Expense backup and restore now shows a persistent snackbar if the token is invalid. User can now login again from the snackbar. If he doesn't want to, he can close the snackbar but the backup/restore will not proceed.

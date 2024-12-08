@@ -1,4 +1,5 @@
 import 'package:expense_manager/services/storage_service.dart';
+import 'package:expense_manager/setup/setup_snackbar_ui.dart';
 import 'package:stacked/stacked.dart';
 import 'package:expense_manager/app/app.locator.dart';
 import 'package:expense_manager/app/app.router.dart';
@@ -24,6 +25,10 @@ class StartupViewModel extends BaseViewModel {
   @override
   void onFutureError(error, Object? key) {
     super.onFutureError(error, key);
-    _snackbarService.showSnackbar(message: error.toString());
+    _snackbarService.showCustomSnackBar(
+      variant: SnackbarType.error,
+      message: error.toString(),
+      duration: const Duration(seconds: 3),
+    );
   }
 }

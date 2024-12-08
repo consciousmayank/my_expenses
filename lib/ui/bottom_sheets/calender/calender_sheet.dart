@@ -88,20 +88,20 @@ class CalenderSheet extends StackedView<CalenderSheetModel> {
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: 
-                // viewModel.currentSelectionExpenseCount > 0
-                //     ? 
+                onPressed:
+                    // viewModel.currentSelectionExpenseCount > 0
+                    //     ?
                     () => completer?.call(
-                          SheetResponse(
-                            confirmed: true,
-                            data: DateSelection(
-                              year: viewModel.selectedYear,
-                              month: viewModel.selectedMonth,
-                              day: viewModel.selectedDay,
-                            ),
-                          ),
-                        ),
-                    // : null,
+                  SheetResponse(
+                    confirmed: true,
+                    data: DateSelection(
+                      year: viewModel.selectedYear,
+                      month: viewModel.selectedMonth,
+                      day: viewModel.selectedDay,
+                    ),
+                  ),
+                ),
+                // : null,
                 child: const Text('OK'),
               ),
             ],

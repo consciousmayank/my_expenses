@@ -754,6 +754,16 @@ class MockDriveBackupService extends _i1.Mock
         returnValueForMissingStub:
             _i4.Future<Map<String, String?>>.value(<String, String?>{}),
       ) as _i4.Future<Map<String, String?>>);
+
+  @override
+  dynamic logout({required String? accessToken}) => super.noSuchMethod(
+        Invocation.method(
+          #logout,
+          [],
+          {#accessToken: accessToken},
+        ),
+        returnValueForMissingStub: null,
+      );
 }
 
 /// A class which mocks [StorageService].

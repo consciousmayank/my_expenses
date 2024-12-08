@@ -6,6 +6,7 @@ import 'package:expense_manager/app/app.bottomsheets.dart';
 import 'package:expense_manager/app/app.dialogs.dart';
 import 'package:expense_manager/app/app.locator.dart';
 import 'package:expense_manager/app/app.router.dart';
+import 'package:expense_manager/setup/setup_snackbar_ui.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -15,6 +16,7 @@ Future<void> main() async {
   await setupLocator(stackedRouter: stackedRouter);
   setupDialogUi();
   setupBottomSheetUi();
+  setupSnackbarUi();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MainApp());
 }
@@ -26,6 +28,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ResponsiveApp(
       builder: (_) => MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         routerDelegate: stackedRouter.delegate(),
         routeInformationParser: stackedRouter.defaultRouteParser(),
       ),

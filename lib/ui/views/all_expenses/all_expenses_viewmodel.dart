@@ -5,10 +5,13 @@ import 'package:expense_manager/app/app.locator.dart';
 import 'package:expense_manager/app/app.router.dart';
 import 'package:expense_manager/extensions/date_format_extension.dart';
 import 'package:expense_manager/models/logged_in_user.dart';
+import 'package:expense_manager/services/app_authentication_service.dart';
 import 'package:expense_manager/services/drive_backup_service.dart';
 import 'package:expense_manager/services/storage_service.dart';
+import 'package:expense_manager/setup/setup_snackbar_ui.dart';
 import 'package:expense_manager/ui/bottom_sheets/add_edit_expense/add_edit_expense_sheet.dart';
 import 'package:expense_manager/ui/bottom_sheets/edit_delete/edit_delete_sheet.dart';
+import 'package:expense_manager/ui/common/app_strings.dart';
 import 'package:stacked/stacked.dart';
 import '../../../models/expense.dart';
 import 'package:stacked_services/stacked_services.dart';
@@ -18,6 +21,7 @@ class AllExpensesViewModel extends BaseViewModel {
   final DriveBackupService _driveBackupService = locator<DriveBackupService>();
   final SnackbarService _snackbarService = locator<SnackbarService>();
   final RouterService _routerService = locator<RouterService>();
+
   String? _errorMessage;
   LoggedInUser? loggedInUser;
   List<Expense> _currentMonthExpenses = [];
@@ -32,6 +36,8 @@ class AllExpensesViewModel extends BaseViewModel {
 
   List<Expense> _allExpenses = [];
   List<Expense> _filteredExpenses = [];
+
+  final _authService = locator<AppAuthenticationService>();
 
   List<Expense> get filteredExpenses => _filteredExpenses;
 
@@ -65,6 +71,10 @@ class AllExpensesViewModel extends BaseViewModel {
   // Initialize the data
   Future<void> initialise() async {
     await fetchLoggedInUser();
+    // Only fetch from Google Drive if local storage is empty
+    if ((await _storageService.getAllExpenses()).isEmpty) {
+      await fetchDataFromGdrive();
+    }
     // final sampleData = Expense.generateSampleExpensesJson();
     final sampleData = await _storageService.getAllExpensesAsMap();
     _allExpenses = (sampleData['expenses'] as List)
@@ -192,6 +202,9 @@ class AllExpensesViewModel extends BaseViewModel {
     setBusy(true);
     _errorMessage = null;
     try {
+      if (!await checkIfTokenIsValid()) {
+        return;
+      }
       final expenses = await _storageService.getAllExpenses();
 
       final backupContent = json.encode({
@@ -202,17 +215,19 @@ class AllExpensesViewModel extends BaseViewModel {
 
       final fileId = await _driveBackupService.uploadFile(
         accessToken: loggedInUser!.accessToken!,
-        fileName: 'expense_manager_backup.json',
+        fileName: ksFileName,
         content: backupContent,
       );
 
-      _snackbarService.showSnackbar(
+      _snackbarService.showCustomSnackBar(
+        variant: SnackbarType.success,
         message: 'Backup successful',
         duration: const Duration(seconds: 3),
       );
     } catch (e) {
       _errorMessage = e.toString();
-      _snackbarService.showSnackbar(
+      _snackbarService.showCustomSnackBar(
+        variant: SnackbarType.error,
         message: 'Backup failed: $_errorMessage',
         duration: const Duration(seconds: 3),
       );
@@ -225,9 +240,14 @@ class AllExpensesViewModel extends BaseViewModel {
     setBusy(true);
     _errorMessage = null;
     try {
+
+      if (!await checkIfTokenIsValid()) {
+        return;
+      }
+      
       final result = await _driveBackupService.readFileByName(
         accessToken: loggedInUser!.accessToken!,
-        fileName: 'expense_manager_backup.json',
+        fileName: ksFileName,
       );
 
       if (result['content'] == null) {
@@ -243,14 +263,16 @@ class AllExpensesViewModel extends BaseViewModel {
       // Save to local storage
       await _storageService.restoreExpenses(expenses);
 
-      _snackbarService.showSnackbar(
+      _snackbarService.showCustomSnackBar(
+        variant: SnackbarType.success,
         message: 'Restored ${expenses.length} expenses successfully',
         duration: const Duration(seconds: 3),
       );
       initialise();
     } catch (e) {
       _errorMessage = e.toString();
-      _snackbarService.showSnackbar(
+      _snackbarService.showCustomSnackBar(
+        variant: SnackbarType.error,
         message: 'Restore failed: $_errorMessage',
         duration: const Duration(seconds: 3),
       );
@@ -304,10 +326,9 @@ class AllExpensesViewModel extends BaseViewModel {
 
       if (dateErrorResponse?.confirmed == true) {
         showCalendarSheet().then((value) {
-          showAddExpenseBottomSheet(expense: expense);  
+          showAddExpenseBottomSheet(expense: expense);
         });
       }
-
     } else {
       final SheetResponse? response = await _bottomSheetService.showCustomSheet(
         enableDrag: true,
@@ -350,5 +371,129 @@ class AllExpensesViewModel extends BaseViewModel {
   void deleteExpense(Expense expense) {
     _storageService.deleteExpense(expense);
     initialise();
+  }
+
+  Future<Expense?> showAddRecurringExpenseBottomSheet() async {
+    _bottomSheetService
+        .showCustomSheet(
+      variant: BottomSheetType.recurringExpense,
+      title: 'Recurring Expense',
+    )
+        .then((value) async {
+      if (value?.confirmed == true) {
+        final SheetResponse? response =
+            await _bottomSheetService.showCustomSheet(
+          enableDrag: true,
+          isScrollControlled: true,
+          variant: BottomSheetType.addEditExpense,
+          data: AddEditExpenseSheetArgs(
+            expense: null,
+            date: _selectedMonth != null && _selectedDay != null
+                ? DateTime(_selectedYear, _selectedMonth!, _selectedDay!)
+                : null,
+          ),
+        );
+
+        if (response != null && response.confirmed) {
+          AddEditExpenseSheetResponse addedExpense = response.data;
+          return addedExpense.expense;
+        } else {
+          return null;
+        }
+      }
+    });
+    return null;
+  }
+
+  void showSnackbarservices() {
+//     _snackbarService.showCustomSnackBar(
+//       variant: SnackbarType.success,
+//       message: 'Operation completed successfully!',
+//       duration: const Duration(seconds: 3),
+//     );
+
+// // Show an error snackbar
+//     _snackbarService.showCustomSnackBar(
+//       variant: SnackbarType.error,
+//       message: 'Something went wrong!',
+//       duration: const Duration(seconds: 3),
+//     );
+
+// // Show a warning snackbar
+//     _snackbarService.showCustomSnackBar(
+//       variant: SnackbarType.warning,
+//       message: 'Please be careful!',
+//       duration: const Duration(seconds: 3),
+//     );
+
+// // Show an info snackbar
+//     _snackbarService.showCustomSnackBar(
+//       variant: SnackbarType.info,
+//       message: 'Here is some information',
+//       duration: const Duration(seconds: 3),
+//     );
+
+    _snackbarService.showPersistentSnackbar(
+      message: 'Are you sure you want to perform this action?',
+      onOkPressed: () {
+        // Handle OK button press
+        print('OK pressed');
+      },
+      // onCancelPressed: () {
+      //   // Handle Cancel button press
+      //   print('Cancel pressed');
+      //   },
+    );
+  }
+
+  Future<void> fetchDataFromGdrive() async {
+    if (loggedInUser?.accessToken == null) return;
+
+    final result = await runBusyFuture(
+      _driveBackupService.readFileByName(
+        accessToken: loggedInUser!.accessToken!,
+        fileName: ksFileName,
+      ),
+      busyObject: ksBusyObjectFetchDataFromGdrive,
+    );
+
+    // If file doesn't exist or content is empty, do nothing
+    if (result['content'] == null || result['content']!.isEmpty) {
+      return;
+    }
+
+    // Show persistent snackbar asking user whether to fetch data
+    _snackbarService.showPersistentSnackbar(
+      message: ksFetchDataFromGdrive,
+      onOkPressed: () async {
+        try {
+          restoreFromGoogleDrive();
+        } catch (e) {
+          _snackbarService.showCustomSnackBar(
+            variant: SnackbarType.error,
+            message: 'Failed to fetch data: ${e.toString()}',
+            duration: const Duration(seconds: 3),
+          );
+        }
+      },
+    );
+  }
+
+  void expireToken() async {
+    await _authService.expireToken();
+  }
+
+  Future<bool> checkIfTokenIsValid() async {
+    final result = await _authService.checkAndRefreshToken();
+    if (result.error != null) {
+      _snackbarService.showPersistentSnackbar(
+        message: ksSessionExpired,
+        onOkPressed: () async {
+          await _authService.signInWithGoogle();
+        },
+      );
+      return false;
+    }
+    return true;
   }
 }

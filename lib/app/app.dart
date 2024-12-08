@@ -17,6 +17,7 @@ import 'package:expense_manager/ui/bottom_sheets/edit_delete/edit_delete_sheet.d
 import 'package:expense_manager/ui/bottom_sheets/add_edit_expense/add_edit_expense_sheet.dart';
 import 'package:expense_manager/ui/bottom_sheets/calender/calender_sheet.dart';
 import 'package:expense_manager/ui/bottom_sheets/my_account/my_account_sheet.dart';
+import 'package:expense_manager/ui/bottom_sheets/recurring_expense/recurring_expense_sheet.dart';
 // @stacked-import
 
 @StackedApp(
@@ -52,6 +53,7 @@ import 'package:expense_manager/ui/bottom_sheets/my_account/my_account_sheet.dar
     StackedBottomsheet(classType: AddEditExpenseSheet),
     StackedBottomsheet(classType: CalenderSheet),
     StackedBottomsheet(classType: MyAccountSheet),
+    StackedBottomsheet(classType: RecurringExpenseSheet),
 // @stacked-bottom-sheet
   ],
   dialogs: [
