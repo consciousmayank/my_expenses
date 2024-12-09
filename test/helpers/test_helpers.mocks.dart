@@ -6,17 +6,17 @@
 import 'dart:async' as _i4;
 import 'dart:ui' as _i8;
 
-import 'package:expense_manager/models/expense.dart' as _i16;
+import 'package:expense_manager/models/expense.dart' as _i14;
 import 'package:expense_manager/models/logged_in_user.dart' as _i18;
-import 'package:expense_manager/models/recurring_expense.dart' as _i17;
+import 'package:expense_manager/models/recurring_expense.dart' as _i15;
 import 'package:expense_manager/services/app_authentication_service.dart'
     as _i11;
 import 'package:expense_manager/services/drive_backup_service.dart' as _i13;
-import 'package:expense_manager/services/storage_service.dart' as _i14;
+import 'package:expense_manager/services/storage_service.dart' as _i16;
 import 'package:firebase_auth/firebase_auth.dart' as _i12;
 import 'package:flutter/material.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i15;
+import 'package:mockito/src/dummies.dart' as _i17;
 import 'package:stacked/stacked.dart' as _i2;
 import 'package:stacked_services/src/bottom_sheet/bottom_sheet_service.dart'
     as _i6;
@@ -751,24 +751,6 @@ class MockDriveBackupService extends _i1.Mock
       ) as _i4.Future<List<Map<String, String>>>);
 
   @override
-  _i4.Future<bool> deleteFile({
-    required String? accessToken,
-    required String? fileId,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #deleteFile,
-          [],
-          {
-            #accessToken: accessToken,
-            #fileId: fileId,
-          },
-        ),
-        returnValue: _i4.Future<bool>.value(false),
-        returnValueForMissingStub: _i4.Future<bool>.value(false),
-      ) as _i4.Future<bool>);
-
-  @override
   _i4.Future<Map<String, String?>> readFileByName({
     required String? accessToken,
     required String? fileName,
@@ -797,20 +779,55 @@ class MockDriveBackupService extends _i1.Mock
         ),
         returnValueForMissingStub: null,
       );
+
+  @override
+  _i4.Future<bool> backupData({
+    required String? accessToken,
+    required List<_i14.Expense>? expenses,
+    required List<_i15.RecurringExpense>? recurringExpenses,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #backupData,
+          [],
+          {
+            #accessToken: accessToken,
+            #expenses: expenses,
+            #recurringExpenses: recurringExpenses,
+          },
+        ),
+        returnValue: _i4.Future<bool>.value(false),
+        returnValueForMissingStub: _i4.Future<bool>.value(false),
+      ) as _i4.Future<bool>);
+
+  @override
+  _i4.Future<Map<String, dynamic>> restoreData(
+          {required String? accessToken}) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #restoreData,
+          [],
+          {#accessToken: accessToken},
+        ),
+        returnValue:
+            _i4.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+        returnValueForMissingStub:
+            _i4.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      ) as _i4.Future<Map<String, dynamic>>);
 }
 
 /// A class which mocks [StorageService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockStorageService extends _i1.Mock implements _i14.StorageService {
+class MockStorageService extends _i1.Mock implements _i16.StorageService {
   @override
   String get expensesBox => (super.noSuchMethod(
         Invocation.getter(#expensesBox),
-        returnValue: _i15.dummyValue<String>(
+        returnValue: _i17.dummyValue<String>(
           this,
           Invocation.getter(#expensesBox),
         ),
-        returnValueForMissingStub: _i15.dummyValue<String>(
+        returnValueForMissingStub: _i17.dummyValue<String>(
           this,
           Invocation.getter(#expensesBox),
         ),
@@ -819,11 +836,11 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
   @override
   String get recurringExpensesBox => (super.noSuchMethod(
         Invocation.getter(#recurringExpensesBox),
-        returnValue: _i15.dummyValue<String>(
+        returnValue: _i17.dummyValue<String>(
           this,
           Invocation.getter(#recurringExpensesBox),
         ),
-        returnValueForMissingStub: _i15.dummyValue<String>(
+        returnValueForMissingStub: _i17.dummyValue<String>(
           this,
           Invocation.getter(#recurringExpensesBox),
         ),
@@ -832,11 +849,11 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
   @override
   String get expenseNamesBox => (super.noSuchMethod(
         Invocation.getter(#expenseNamesBox),
-        returnValue: _i15.dummyValue<String>(
+        returnValue: _i17.dummyValue<String>(
           this,
           Invocation.getter(#expenseNamesBox),
         ),
-        returnValueForMissingStub: _i15.dummyValue<String>(
+        returnValueForMissingStub: _i17.dummyValue<String>(
           this,
           Invocation.getter(#expenseNamesBox),
         ),
@@ -845,11 +862,11 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
   @override
   String get loggedInUserBox => (super.noSuchMethod(
         Invocation.getter(#loggedInUserBox),
-        returnValue: _i15.dummyValue<String>(
+        returnValue: _i17.dummyValue<String>(
           this,
           Invocation.getter(#loggedInUserBox),
         ),
-        returnValueForMissingStub: _i15.dummyValue<String>(
+        returnValueForMissingStub: _i17.dummyValue<String>(
           this,
           Invocation.getter(#loggedInUserBox),
         ),
@@ -867,7 +884,7 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
 
   @override
   _i4.Future<void> saveExpense({
-    required _i16.Expense? expense,
+    required _i14.Expense? expense,
     bool? isBackup = false,
   }) =>
       (super.noSuchMethod(
@@ -884,7 +901,7 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<void> restoreExpenses(List<_i16.Expense>? expenses) =>
+  _i4.Future<void> restoreExpenses(List<_i14.Expense>? expenses) =>
       (super.noSuchMethod(
         Invocation.method(
           #restoreExpenses,
@@ -895,25 +912,25 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<void>);
 
   @override
-  List<_i16.Expense> getCurrentMonthExpenses() => (super.noSuchMethod(
+  List<_i14.Expense> getCurrentMonthExpenses() => (super.noSuchMethod(
         Invocation.method(
           #getCurrentMonthExpenses,
           [],
         ),
-        returnValue: <_i16.Expense>[],
-        returnValueForMissingStub: <_i16.Expense>[],
-      ) as List<_i16.Expense>);
+        returnValue: <_i14.Expense>[],
+        returnValueForMissingStub: <_i14.Expense>[],
+      ) as List<_i14.Expense>);
 
   @override
-  _i4.Future<List<_i16.Expense>> getAllExpenses() => (super.noSuchMethod(
+  _i4.Future<List<_i14.Expense>> getAllExpenses() => (super.noSuchMethod(
         Invocation.method(
           #getAllExpenses,
           [],
         ),
-        returnValue: _i4.Future<List<_i16.Expense>>.value(<_i16.Expense>[]),
+        returnValue: _i4.Future<List<_i14.Expense>>.value(<_i14.Expense>[]),
         returnValueForMissingStub:
-            _i4.Future<List<_i16.Expense>>.value(<_i16.Expense>[]),
-      ) as _i4.Future<List<_i16.Expense>>);
+            _i4.Future<List<_i14.Expense>>.value(<_i14.Expense>[]),
+      ) as _i4.Future<List<_i14.Expense>>);
 
   @override
   _i4.Future<List<String>> getExpenseNames() => (super.noSuchMethod(
@@ -926,7 +943,7 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<List<String>>);
 
   @override
-  _i4.Future<void> saveRecurringExpense(_i17.RecurringExpense? expense) =>
+  _i4.Future<void> saveRecurringExpense(_i15.RecurringExpense? expense) =>
       (super.noSuchMethod(
         Invocation.method(
           #saveRecurringExpense,
@@ -937,7 +954,7 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<void> updateRecurringExpense(_i17.RecurringExpense? expense) =>
+  _i4.Future<void> updateRecurringExpense(_i15.RecurringExpense? expense) =>
       (super.noSuchMethod(
         Invocation.method(
           #updateRecurringExpense,
@@ -958,18 +975,18 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<List<_i17.RecurringExpense>> getRecurringExpenses() =>
+  _i4.Future<List<_i15.RecurringExpense>> getRecurringExpenses() =>
       (super.noSuchMethod(
         Invocation.method(
           #getRecurringExpenses,
           [],
         ),
-        returnValue: _i4.Future<List<_i17.RecurringExpense>>.value(
-            <_i17.RecurringExpense>[]),
+        returnValue: _i4.Future<List<_i15.RecurringExpense>>.value(
+            <_i15.RecurringExpense>[]),
         returnValueForMissingStub:
-            _i4.Future<List<_i17.RecurringExpense>>.value(
-                <_i17.RecurringExpense>[]),
-      ) as _i4.Future<List<_i17.RecurringExpense>>);
+            _i4.Future<List<_i15.RecurringExpense>>.value(
+                <_i15.RecurringExpense>[]),
+      ) as _i4.Future<List<_i15.RecurringExpense>>);
 
   @override
   dynamic saveLoggedInUser({
@@ -999,7 +1016,7 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       ) as _i4.Future<_i18.LoggedInUser?>);
 
   @override
-  void deleteExpense(_i16.Expense? expense) => super.noSuchMethod(
+  void deleteExpense(_i14.Expense? expense) => super.noSuchMethod(
         Invocation.method(
           #deleteExpense,
           [expense],
@@ -1008,7 +1025,7 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
       );
 
   @override
-  _i4.Future<void> updateExpense({required _i16.Expense? expense}) =>
+  _i4.Future<void> updateExpense({required _i14.Expense? expense}) =>
       (super.noSuchMethod(
         Invocation.method(
           #updateExpense,
@@ -1030,4 +1047,22 @@ class MockStorageService extends _i1.Mock implements _i14.StorageService {
         returnValueForMissingStub:
             _i4.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
       ) as _i4.Future<Map<String, dynamic>>);
+
+  @override
+  _i4.Future<void> restoreFromBackup({
+    required List<_i14.Expense>? expenses,
+    required List<_i15.RecurringExpense>? recurringExpenses,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #restoreFromBackup,
+          [],
+          {
+            #expenses: expenses,
+            #recurringExpenses: recurringExpenses,
+          },
+        ),
+        returnValue: _i4.Future<void>.value(),
+        returnValueForMissingStub: _i4.Future<void>.value(),
+      ) as _i4.Future<void>);
 }

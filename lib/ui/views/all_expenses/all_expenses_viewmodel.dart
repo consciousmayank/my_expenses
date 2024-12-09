@@ -243,7 +243,6 @@ class AllExpensesViewModel extends BaseViewModel {
     setBusy(true);
     _errorMessage = null;
     try {
-      
       if (!await checkIfTokenIsValid()) {
         return;
       }
@@ -287,6 +286,7 @@ class AllExpensesViewModel extends BaseViewModel {
 
       final result = await _driveBackupService.restoreData(
         accessToken: loggedInUser!.accessToken!,
+        userEmail: loggedInUser!.email,
       );
 
       if (!result['success']) {
@@ -303,7 +303,7 @@ class AllExpensesViewModel extends BaseViewModel {
         message: 'Restore successful',
         duration: const Duration(seconds: 3),
       );
-      
+
       await initialise();
     } catch (e) {
       _errorMessage = e.toString();

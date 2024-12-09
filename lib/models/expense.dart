@@ -49,7 +49,7 @@ class Expense extends HiveObject {
     return Expense(
       name: json['name'] as String,
       description: json['description'] as String?,
-      amount: json['amount'] as double,
+      amount: json['amount'] is int ? json['amount'].toDouble() : json['amount'],
       date: DateTime.parse(json['date'] as String),
       isRecurring: json['isRecurring'] as bool? ?? false,
       id: json['key'] as String?,

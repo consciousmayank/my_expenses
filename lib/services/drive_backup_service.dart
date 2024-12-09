@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io' show Platform;
 
 import 'package:expense_manager/models/expense.dart';
 import 'package:expense_manager/models/recurring_expense.dart';
@@ -8,6 +9,7 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:crypto/crypto.dart';
 import 'package:expense_manager/ui/common/app_strings.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DriveBackupService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -31,16 +33,11 @@ class DriveBackupService {
 
   // Initialize encryption components with user's email
   void initializeEncryption(String userEmail) {
-    // Combine user email with salt for added security
+    // Use same encryption for both web and mobile
     final saltedEmail = '$userEmail$_secretSalt';
-    // Convert email to lowercase and then to bytes for hashing
     final emailBytes = utf8.encode(saltedEmail.toLowerCase());
-    // Create SHA-256 hash of the salted email
     final hash = sha256.convert(emailBytes);
-    // Use the hash bytes as encryption key
     _key = encrypt.Key(Uint8List.fromList(hash.bytes));
-
-    // Use first 16 bytes of hash as IV (AES requires 16 bytes IV)
     final ivBytes = Uint8List.fromList(hash.bytes.sublist(0, 16));
     _iv = encrypt.IV(ivBytes);
   }
@@ -52,23 +49,18 @@ class DriveBackupService {
     }
   }
 
-  // Updated encryption method to handle null safety
+  // Updated encryption method
   String _encryptData(String data) {
     _checkEncryptionInitialized();
-    // Create AES encrypter with our key (we can use ! because we checked above)
     final encrypter = encrypt.Encrypter(encrypt.AES(_key!));
-    // Encrypt the data using the IV
     final encrypted = encrypter.encrypt(data, iv: _iv!);
-    // Return base64 encoded encrypted data
     return encrypted.base64;
   }
 
-  // Updated decryption method to handle null safety
+  // Updated decryption method
   String _decryptData(String encryptedData) {
     _checkEncryptionInitialized();
-    // Create AES encrypter with our key (we can use ! because we checked above)
     final encrypter = encrypt.Encrypter(encrypt.AES(_key!));
-    // Decrypt the base64 encoded data using the IV
     final decrypted = encrypter.decrypt64(encryptedData, iv: _iv!);
     return decrypted;
   }
@@ -79,13 +71,13 @@ class DriveBackupService {
       print('Attempting to refresh access token...');
       // First try silent sign in
       var currentUser = await _googleSignIn.signInSilently();
-      
+
       // If silent sign in fails, try interactive sign in
       if (currentUser == null) {
         print('Silent sign in failed, attempting interactive sign in...');
         currentUser = await _googleSignIn.signIn();
       }
-      
+
       if (currentUser != null) {
         final auth = await currentUser.authentication;
         print('Successfully refreshed access token');
@@ -104,7 +96,8 @@ class DriveBackupService {
   Future<bool> _isTokenValid(String accessToken) async {
     try {
       final response = await http.get(
-        Uri.parse('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=$accessToken'),
+        Uri.parse(
+            'https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=$accessToken'),
       );
       print('Token validation response status: ${response.statusCode}');
       return response.statusCode == 200;
@@ -140,8 +133,9 @@ class DriveBackupService {
 
     Future<String?> attempt() async {
       try {
-        print('Attempting to find or create app folder: $_appFolderName (Attempt ${retryCount + 1}/$maxRetries)');
-        
+        print(
+            'Attempting to find or create app folder: $_appFolderName (Attempt ${retryCount + 1}/$maxRetries)');
+
         // Validate/refresh token first
         final validToken = await _getValidAccessToken(accessToken);
         if (validToken == null) {
@@ -152,7 +146,8 @@ class DriveBackupService {
         // First check if the app folder already exists
         final files = await listFiles(
           accessToken: validToken,
-          query: "name = '$_appFolderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+          query:
+              "name = '$_appFolderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
         );
 
         if (files.isNotEmpty) {
@@ -182,9 +177,11 @@ class DriveBackupService {
         if (response.statusCode == 401) {
           retryCount++;
           if (retryCount >= maxRetries) {
-            throw Exception('Failed to authenticate after $maxRetries attempts. Please login again.');
+            throw Exception(
+                'Failed to authenticate after $maxRetries attempts. Please login again.');
           }
-          print('Token expired during request, retrying (Attempt ${retryCount + 1}/$maxRetries)...');
+          print(
+              'Token expired during request, retrying (Attempt ${retryCount + 1}/$maxRetries)...');
           final newToken = await _refreshAccessToken();
           if (newToken != null) {
             return attempt();
@@ -194,7 +191,8 @@ class DriveBackupService {
 
         if (response.statusCode == 200) {
           final responseData = json.decode(response.body);
-          print('Successfully created app folder with ID: ${responseData['id']}');
+          print(
+              'Successfully created app folder with ID: ${responseData['id']}');
           return responseData['id'];
         } else {
           print('Failed to create folder. Status code: ${response.statusCode}');
@@ -220,7 +218,7 @@ class DriveBackupService {
   }) async {
     try {
       print('Starting file upload process for: $fileName');
-      
+
       // Validate/refresh token first
       final validToken = await _getValidAccessToken(accessToken);
       if (validToken == null) {
@@ -260,7 +258,7 @@ class DriveBackupService {
         // Encrypt the content before uploading
         print('Encrypting content...');
         final encryptedContent = _encryptData(content);
-        
+
         final metadataPart = '--$boundary\r\n'
             'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             '${json.encode(metadata)}\r\n';
@@ -273,7 +271,8 @@ class DriveBackupService {
         final body = metadataPart + contentPart;
 
         print('Sending file update request...');
-        final uri = Uri.parse('$_uploadBaseUrl/files/$fileId?uploadType=multipart');
+        final uri =
+            Uri.parse('$_uploadBaseUrl/files/$fileId?uploadType=multipart');
         final response = await http.patch(uri, headers: headers, body: body);
 
         print('File update response status: ${response.statusCode}');
@@ -299,7 +298,7 @@ class DriveBackupService {
 
         print('Encrypting content...');
         final encryptedContent = _encryptData(content);
-        
+
         final metadataPart = '--$boundary\r\n'
             'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             '${json.encode(metadata)}\r\n';
@@ -327,7 +326,7 @@ class DriveBackupService {
       return null;
     } catch (e) {
       print('Error uploading file to Drive: $e');
-      if (e.toString().contains('UNAUTHENTICATED') || 
+      if (e.toString().contains('UNAUTHENTICATED') ||
           e.toString().contains('Invalid Credentials')) {
         throw Exception('Authentication failed. Please sign in again.');
       }
@@ -514,8 +513,12 @@ class DriveBackupService {
   // Update restore functionality to handle recurring expenses
   Future<Map<String, dynamic>> restoreData({
     required String accessToken,
+    required String userEmail,
   }) async {
     try {
+      // Initialize encryption with user email before reading data
+      initializeEncryption(userEmail);
+
       final result = await readFileByName(
         accessToken: accessToken,
         fileName: ksFileName,
@@ -530,26 +533,30 @@ class DriveBackupService {
         };
       }
 
-      final Map<String, dynamic> backupData = json.decode(result['content']!);
-      
+      final Map<String, dynamic> backupData = result['content'] != null
+          ? json.decode(result['content']!)
+          : {};
+
       // Parse regular expenses
       final List<Expense> expenses = (backupData['expenses'] as List)
           .where((element) {
-            final isRecurring = (element as Map<String, dynamic>)['isRecurring'];
+            final isRecurring =
+                (element as Map<String, dynamic>)['isRecurring'];
             return isRecurring == null || isRecurring == false;
           })
           .map((json) => Expense.fromJson(json))
           .toList();
 
-      // Parse recurring expenses  
-      final List<RecurringExpense> recurringExpenses = 
+      // Parse recurring expenses
+      final List<RecurringExpense> recurringExpenses =
           (backupData['recurringExpenses'] as List? ?? [])
-          .where((element) {
-            final isRecurring = (element as Map<String, dynamic>)['isRecurring'];
-            return isRecurring == null || isRecurring == false;
-          })
-          .map((json) => RecurringExpense.fromJson(json))
-          .toList();
+              .where((element) {
+                final isRecurring =
+                    (element as Map<String, dynamic>)['isRecurring'];
+                return isRecurring == null || isRecurring == false;
+              })
+              .map((json) => RecurringExpense.fromJson(json))
+              .toList();
 
       return {
         'success': true,

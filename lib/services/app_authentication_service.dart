@@ -128,9 +128,11 @@ class AppAuthenticationService {
   Future<UserCredential?> signInWithGoogle() async {
     try {
       // Check Google Play Services first
-      final hasGooglePlayServices = await checkGooglePlayServices();
-      if (!hasGooglePlayServices && Platform.isAndroid) {
-        throw Exception('Google Play Services not available');
+      if (!kIsWeb && Platform.isAndroid) {
+        final hasGooglePlayServices = await checkGooglePlayServices();
+        if (!hasGooglePlayServices) {
+          throw Exception('Google Play Services not available');
+        }
       }
 
       // Sign in with Google
