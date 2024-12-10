@@ -251,6 +251,7 @@ class AllExpensesViewModel extends BaseViewModel {
 
       final success = await _driveBackupService.backupData(
         accessToken: loggedInUser!.accessToken!,
+        userEmail: loggedInUser!.email,
         expenses: expenses,
         recurringExpenses: recurringExpenses,
       );
