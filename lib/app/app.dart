@@ -18,6 +18,7 @@ import 'package:expense_manager/ui/bottom_sheets/add_edit_expense/add_edit_expen
 import 'package:expense_manager/ui/bottom_sheets/calender/calender_sheet.dart';
 import 'package:expense_manager/ui/bottom_sheets/my_account/my_account_sheet.dart';
 import 'package:expense_manager/ui/bottom_sheets/recurring_expense/recurring_expense_sheet.dart';
+import 'package:expense_manager/services/encryption_service.dart';
 // @stacked-import
 
 @StackedApp(
@@ -44,6 +45,7 @@ import 'package:expense_manager/ui/bottom_sheets/recurring_expense/recurring_exp
     LazySingleton(classType: AppAuthenticationService),
     LazySingleton(classType: DriveBackupService),
     // LazySingleton(classType: StorageService),
+    LazySingleton(classType: EncryptionService),
 // @stacked-service
   ],
   bottomsheets: [
