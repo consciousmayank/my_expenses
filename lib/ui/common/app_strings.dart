@@ -16,8 +16,7 @@ const String ksDriveApiBaseUrl = 'https://www.googleapis.com/drive/v3';
 const String ksDriveUploadBaseUrl =
     'https://www.googleapis.com/upload/drive/v3';
 const String ksDriveAppFolderName = 'Expense Manager';
-const String ksDriveSecretSalt =
-    'g/otWW+8Ycnne0MUr9XAu5gUQnfIdcQbpoIjz7P1EX44RI+Rxuderb6l0Lyw0j7+OqCXhvSsG05U0LNxwk/jgw==';
+const String ksDriveSecretSalt = "your-long-random-string-here";
 
 // Drive Error Messages
 const String ksEncryptionNotInitialized =

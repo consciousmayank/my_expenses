@@ -1,15 +1,12 @@
 import 'dart:convert';
-import 'dart:typed_data';
-import 'dart:io' show Platform;
 
+import 'package:expense_manager/app/app.locator.dart';
 import 'package:expense_manager/models/expense.dart';
 import 'package:expense_manager/models/recurring_expense.dart';
+import 'package:expense_manager/services/encryption_service.dart';
 import 'package:http/http.dart' as http;
-import 'package:encrypt/encrypt.dart' as encrypt;
-import 'package:crypto/crypto.dart';
 import 'package:expense_manager/ui/common/app_strings.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DriveBackupService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -19,50 +16,25 @@ class DriveBackupService {
     ],
   );
 
+  final EncryptionService _encryptionService = locator<EncryptionService>();
+
   // Base URLs for Google Drive API endpoints
   static const _driveApiBaseUrl = ksDriveApiBaseUrl;
   static const _uploadBaseUrl = ksDriveUploadBaseUrl;
   // Name of the folder where all app files will be stored in Google Drive
   static const _appFolderName = ksDriveAppFolderName;
-  // A unique salt added to user's email for additional security during key generation
-  static const _secretSalt = ksDriveSecretSalt;
 
-  // Make encryption components nullable
-  encrypt.Key? _key;
-  encrypt.IV? _iv;
 
-  // Initialize encryption components with user's email
   void initializeEncryption(String userEmail) {
-    // Use same encryption for both web and mobile
-    final saltedEmail = '$userEmail$_secretSalt';
-    final emailBytes = utf8.encode(saltedEmail.toLowerCase());
-    final hash = sha256.convert(emailBytes);
-    _key = encrypt.Key(Uint8List.fromList(hash.bytes));
-    final ivBytes = Uint8List.fromList(hash.bytes.sublist(0, 16));
-    _iv = encrypt.IV(ivBytes);
+    _encryptionService.initialize(userEmail);
   }
 
-  // Updated check method to handle null values
-  void _checkEncryptionInitialized() {
-    if (_key == null || _iv == null) {
-      throw StateError(ksEncryptionNotInitialized);
-    }
-  }
-
-  // Updated encryption method
   String _encryptData(String data) {
-    _checkEncryptionInitialized();
-    final encrypter = encrypt.Encrypter(encrypt.AES(_key!));
-    final encrypted = encrypter.encrypt(data, iv: _iv!);
-    return encrypted.base64;
+    return _encryptionService.encrypt(data);
   }
 
-  // Updated decryption method
   String _decryptData(String encryptedData) {
-    _checkEncryptionInitialized();
-    final encrypter = encrypt.Encrypter(encrypt.AES(_key!));
-    final decrypted = encrypter.decrypt64(encryptedData, iv: _iv!);
-    return decrypted;
+    return _encryptionService.decrypt(encryptedData);
   }
 
   // Add method to refresh token
@@ -483,13 +455,18 @@ class DriveBackupService {
     }
   }
 
-  // Add method to backup both expenses and recurring expenses
+  Future<void> _ensureEncryption(String userEmail) async {
+    _encryptionService.initialize(userEmail);
+  }
+
   Future<bool> backupData({
     required String accessToken,
+    required String userEmail,
     required List<Expense> expenses,
     required List<RecurringExpense> recurringExpenses,
   }) async {
     try {
+      await _ensureEncryption(userEmail);
       final backupContent = json.encode({
         'expenses': expenses.map((e) => e.toJson()).toList(),
         'recurringExpenses': recurringExpenses.map((e) => e.toJson()).toList(),
@@ -510,15 +487,12 @@ class DriveBackupService {
     }
   }
 
-  // Update restore functionality to handle recurring expenses
   Future<Map<String, dynamic>> restoreData({
     required String accessToken,
     required String userEmail,
   }) async {
     try {
-      // Initialize encryption with user email before reading data
-      initializeEncryption(userEmail);
-
+      await _ensureEncryption(userEmail);
       final result = await readFileByName(
         accessToken: accessToken,
         fileName: ksFileName,
@@ -533,9 +507,8 @@ class DriveBackupService {
         };
       }
 
-      final Map<String, dynamic> backupData = result['content'] != null
-          ? json.decode(result['content']!)
-          : {};
+      final Map<String, dynamic> backupData =
+          result['content'] != null ? json.decode(result['content']!) : {};
 
       // Parse regular expenses
       final List<Expense> expenses = (backupData['expenses'] as List)
