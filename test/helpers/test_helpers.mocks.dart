@@ -12,6 +12,7 @@ import 'package:expense_manager/models/recurring_expense.dart' as _i15;
 import 'package:expense_manager/services/app_authentication_service.dart'
     as _i11;
 import 'package:expense_manager/services/drive_backup_service.dart' as _i13;
+import 'package:expense_manager/services/encryption_service.dart' as _i19;
 import 'package:expense_manager/services/storage_service.dart' as _i16;
 import 'package:firebase_auth/firebase_auth.dart' as _i12;
 import 'package:flutter/material.dart' as _i5;
@@ -783,6 +784,7 @@ class MockDriveBackupService extends _i1.Mock
   @override
   _i4.Future<bool> backupData({
     required String? accessToken,
+    required String? userEmail,
     required List<_i14.Expense>? expenses,
     required List<_i15.RecurringExpense>? recurringExpenses,
   }) =>
@@ -792,6 +794,7 @@ class MockDriveBackupService extends _i1.Mock
           [],
           {
             #accessToken: accessToken,
+            #userEmail: userEmail,
             #expenses: expenses,
             #recurringExpenses: recurringExpenses,
           },
@@ -801,13 +804,18 @@ class MockDriveBackupService extends _i1.Mock
       ) as _i4.Future<bool>);
 
   @override
-  _i4.Future<Map<String, dynamic>> restoreData(
-          {required String? accessToken}) =>
+  _i4.Future<Map<String, dynamic>> restoreData({
+    required String? accessToken,
+    required String? userEmail,
+  }) =>
       (super.noSuchMethod(
         Invocation.method(
           #restoreData,
           [],
-          {#accessToken: accessToken},
+          {
+            #accessToken: accessToken,
+            #userEmail: userEmail,
+          },
         ),
         returnValue:
             _i4.Future<Map<String, dynamic>>.value(<String, dynamic>{}),
@@ -1065,4 +1073,62 @@ class MockStorageService extends _i1.Mock implements _i16.StorageService {
         returnValue: _i4.Future<void>.value(),
         returnValueForMissingStub: _i4.Future<void>.value(),
       ) as _i4.Future<void>);
+}
+
+/// A class which mocks [EncryptionService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockEncryptionService extends _i1.Mock implements _i19.EncryptionService {
+  @override
+  void initialize(String? userEmail) => super.noSuchMethod(
+        Invocation.method(
+          #initialize,
+          [userEmail],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  String encrypt(String? data) => (super.noSuchMethod(
+        Invocation.method(
+          #encrypt,
+          [data],
+        ),
+        returnValue: _i17.dummyValue<String>(
+          this,
+          Invocation.method(
+            #encrypt,
+            [data],
+          ),
+        ),
+        returnValueForMissingStub: _i17.dummyValue<String>(
+          this,
+          Invocation.method(
+            #encrypt,
+            [data],
+          ),
+        ),
+      ) as String);
+
+  @override
+  String decrypt(String? encryptedData) => (super.noSuchMethod(
+        Invocation.method(
+          #decrypt,
+          [encryptedData],
+        ),
+        returnValue: _i17.dummyValue<String>(
+          this,
+          Invocation.method(
+            #decrypt,
+            [encryptedData],
+          ),
+        ),
+        returnValueForMissingStub: _i17.dummyValue<String>(
+          this,
+          Invocation.method(
+            #decrypt,
+            [encryptedData],
+          ),
+        ),
+      ) as String);
 }

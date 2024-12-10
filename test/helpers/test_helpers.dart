@@ -5,6 +5,7 @@ import 'package:stacked_services/stacked_services.dart';
 import 'package:expense_manager/services/app_authentication_service.dart';
 import 'package:expense_manager/services/drive_backup_service.dart';
 import 'package:expense_manager/services/storage_service.dart';
+import 'package:expense_manager/services/encryption_service.dart';
 // @stacked-import
 
 import 'test_helpers.mocks.dart';
@@ -17,6 +18,7 @@ import 'test_helpers.mocks.dart';
       onMissingStub: OnMissingStub.returnDefault),
   MockSpec<DriveBackupService>(onMissingStub: OnMissingStub.returnDefault),
   MockSpec<StorageService>(onMissingStub: OnMissingStub.returnDefault),
+  MockSpec<EncryptionService>(onMissingStub: OnMissingStub.returnDefault),
 // @stacked-mock-spec
 ])
 void registerServices() {
@@ -26,6 +28,7 @@ void registerServices() {
   getAndRegisterAppAuthenticationService();
   getAndRegisterDriveBackupService();
   getAndRegisterStorageService();
+  getAndRegisterEncryptionService();
 // @stacked-mock-register
 }
 
@@ -97,6 +100,13 @@ MockStorageService getAndRegisterStorageService() {
   _removeRegistrationIfExists<StorageService>();
   final service = MockStorageService();
   locator.registerSingleton<StorageService>(service);
+  return service;
+}
+
+MockEncryptionService getAndRegisterEncryptionService() {
+  _removeRegistrationIfExists<EncryptionService>();
+  final service = MockEncryptionService();
+  locator.registerSingleton<EncryptionService>(service);
   return service;
 }
 // @stacked-mock-create
