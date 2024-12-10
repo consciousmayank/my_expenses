@@ -73,7 +73,8 @@ class RecurringExpense extends HiveObject {
     return RecurringExpense(
       name: json['name'] as String,
       description: json['description'] as String?,
-      amount: json['amount'] is int ? json['amount'].toDouble() : json['amount'],
+      amount:
+          json['amount'] is int ? json['amount'].toDouble() : json['amount'],
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: DateTime.parse(json['endDate'] as String),
       type: RecurringExpenseType.values.firstWhere(
